@@ -88,6 +88,10 @@ def encode_fixed_point(x, num_bits, bits_after_comma):
 
     return ''.join(result)
 
+
+def is_integer(n):
+    return isinstance(n, (int, float)) and n == int(n)
+
 def encode_floating_point(x):
     # This function must encode the provided floating-point number "x"
     # according to its floating-point representation with binary32
@@ -96,29 +100,49 @@ def encode_floating_point(x):
     # the characters "0" and "1".
 
     # TODO
-    k = 23
-    result = ['0'] * 32
-    fixed_x = None
-    if (x < 0) :
-        result[0] = '1'
+    # recupere l'information sur le signe d
+    is_negative = x < 0
+    fixed_x = x
+    k = 0
 
-    fixed_x = encode_fixed_point(abs(x), 32, k)
-    print(fixed_x)
+    # je vais multiplier par 2 jusqu'a ce que le nombre devienne un entier
+    while not is_integer(fixed_x):
+        fixed_x *= 2
+        k+=1
 
-    i = 0
-    while i < 32 and fixed_x[i] == '0':
-        i += 1
+    fixed_x = round(abs(fixed_x))
 
-    # encode the exponent
-    exponent = encode_uint8((abs(i-32)-1)-k+127)
+    # j'encode la mantisse en binaire
+    mantissa = ""
+    while fixed_x > 0 :
+        bit = fixed_x % 2
+        fixed_x //= 2
+        mantissa += str(bit)
 
-    # Write the exponent in the representation
-    for j in range (len(exponent)):
-        result[j+1] = exponent[j]
+    # Trouver la position du 1 le plus a gauche
+    index = 0
+    for i in range(len(mantissa)) :
+        if mantissa[i] == '1' :
+            index = i
 
-    # Write the significant in the representation
-    for k in range(i+1, len(fixed_x)) :
-        result[k-i+8] = fixed_x[k]
+    # le representation binaire de l'exponent.
+    exponent = encode_uint8(index - k + 127)
+
+    result = ["0"] * 32
+    if is_negative : result[0] = "1"
+    j = 1
+    # je copie les bits de l'exposant
+    for i in range(len(exponent)) :
+        result[j] = exponent[i]
+        j += 1
+
+    # j'inverse l'ordre des bits de la mantisse
+    mantissa = mantissa[::-1]
+
+    # je copie les bits de la mantisse
+    for i in range(1, len(mantissa)) :
+        result[j] = mantissa[i]
+        j += 1
 
     return ''.join(result)
 
@@ -135,9 +159,5 @@ def smart_sum(lst):
     # while minimizing numerical precision loss.
 
     # TODO
-
+    lst.sort()
     return sum(lst)
-
-if __name__ == '__main__':
-    print(encode_floating_point(33.6875))
-    # print(encode_uint8(130))
